@@ -15,6 +15,9 @@ def extract_single_line_metrics(
     """
     Extracts key-value pairs from a text string and casts values to specified types.
 
+    Also accepts native NanoGPT step:K/N and integer train_time:Tms.
+    Explicit n_steps takes precedence; time remains in milliseconds.
+
     Args:
         metric_types (dict[str, type]): Mapping of keys to their expected Python types.
         text (str): Assumes input text contains key-value pairs in the format "k1: v1 k2: v2,..."
@@ -27,12 +30,23 @@ def extract_single_line_metrics(
     metrics = {}
     matches = re.findall(pattern, text)
 
+    # Preserve explicit n_steps, including malformed values, over the native alias.
+    if 'n_steps' in metric_types and not re.search(r'\bn_steps\s*:', text):
+        matches += [
+            ('n_steps', value.split('/')[0])
+            for key, value in matches
+            if key == 'step' and re.fullmatch(r'\d+/\d+', value)
+        ]
+
     metric_keys = list(metric_types.keys())
 
     for key, value in matches:
         if key in metric_keys:
             if metric_types and key in metric_types:
                 try:
+                    if (key == 'train_time' and metric_types[key] is int
+                            and re.fullmatch(r'\d+ms', value)):
+                        value = value[:-2]
                     metrics[key] = metric_types[key](value)
                 except (ValueError, TypeError):
                     return {}
