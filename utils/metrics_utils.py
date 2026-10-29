@@ -81,8 +81,8 @@ def extract_best_line_metrics(
         if best_metrics is None:
             best_metrics, best_sel_val = metrics, sel_val
         else:
-            # Only replace if better than current best + is valid under constraints
-            if is_valid and ((
+            # Prefer valid results; compare scores only when the current best is valid.
+            if is_valid and (not best_metrics['is_valid'] or (
                 lower_is_better and sel_val < best_sel_val
             ) or (
                 not lower_is_better and sel_val > best_sel_val
